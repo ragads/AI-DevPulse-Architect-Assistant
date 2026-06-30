@@ -41,10 +41,14 @@ graph TD
 ```
 
 ### Key Files
-* **[app.py](file:///f:/AI%20Software%20Engineer%20Assistant/app.py)**: Handles the Streamlit page rendering, theme definitions, visual grid styling, custom component HTML/CSS, Plotly data figures, and page routing.
-* **[agent_orchestrator.py](file:///f:/AI%20Software%20Engineer%20Assistant/agent_orchestrator.py)**: Manages agent prompts, sequence execution log triggers, and coordinates Planner, Code Search, Doc Search, and Generator workflows.
-* **[supabase_db.py](file:///f:/AI%20Software%20Engineer%20Assistant/supabase_db.py)**: Wraps embedding calls, manages sliding text chunk calculations, SQLite/Supabase operations, and in-memory cosine similarity search functions.
-* **[requirements.txt](file:///f:/AI%20Software%20Engineer%20Assistant/requirements.txt)**: Defines external dependencies.
+* **[app.py](app.py)**: Handles the Streamlit page rendering, theme definitions, visual grid styling, custom component HTML/CSS, Plotly data figures, and page routing.
+* **[agent_orchestrator.py](agent_orchestrator.py)**: Manages agent prompts, sequence execution log triggers, and coordinates Planner, Code Search, Doc Search, and Generator workflows.
+* **[services/](services/)**: Directory containing core backend services:
+  * **[supabase_service.py](services/supabase_service.py)**: Coordinates remote Supabase operations and acts as the entry point for the database manager (falling back to SQLite when Supabase is unconfigured).
+  * **[sqlite_service.py](services/sqlite_service.py)**: Manages the local SQLite database (`assistant.db`), defining table structures and running local text indexing.
+  * **[embedding_service.py](services/embedding_service.py)**: Handles connection to Gemini's embedding model to generate high-dimensional vectors.
+  * **[similarity_service.py](services/similarity_service.py)**: Contains math utilities for calculating cosine similarity metrics during search queries.
+* **[requirements.txt](requirements.txt)**: Defines external dependencies.
 
 ---
 
