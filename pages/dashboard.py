@@ -1,4 +1,4 @@
-# pages/data.py
+# pages/dashboard.py
 import streamlit as st
 import urllib.request
 import zipfile
@@ -185,7 +185,7 @@ def render_files_table(client):
 
 def render(client):
     inject_theme()
-    st.markdown("### 📂  Codebase Context Ingest")
+    st.markdown("### 📂  Dashboard")
     render_ingestion_tabs(client)
     st.markdown("<hr style='border-color:rgba(0,240,255,0.15); margin:24px 0;'>", unsafe_allow_html=True)
     render_files_table(client)

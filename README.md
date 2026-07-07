@@ -25,7 +25,7 @@ A high-fidelity, multi-agent workspace designed for codebase exploration, reposi
 4. **Premium Space-Blue UI Dashboard**:
    * Outlined with glowing space-blue and hot-magenta neon boundaries (`#00f0ff` / `#d946ef`).
    * Custom Plotly gauge dials, dual-spline traffic area graphs, and percentage donut arrays.
-   * Dedicated pages: **Home** (Dashboard Metrics), **Console** (Interactive Swarm Terminal), **Data** (Codebase Ingestion), **Destinations** (Query History Logs), **Tasks** (Agent Pipeline Traces), **Devices** (Cluster maps), and **Settings** (Theme & API configuration).
+   * Dedicated pages: **Dashboard** (Codebase Ingestion & File Index Manager).
 
 ---
 

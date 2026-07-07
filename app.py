@@ -15,14 +15,7 @@ inject_theme()
 client = get_client()   # None = SQLite fallback
 
 PAGES = {
-    '🏠  Home':          'pages.home',
-    '🖥  Console':        'pages.console',
-    '📂  Data':           'pages.data',
-    '🗂  Destinations':   'pages.destinations',
-    '⚡  Tasks':          'pages.tasks',
-    '📊  Analytics':      'pages.analytics',
-    '🔍  Search':         'pages.search',
-    '⚙️  Settings':       'pages.settings',
+    '📂  Dashboard':     'pages.dashboard',
 }
 
 with st.sidebar:
