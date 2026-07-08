@@ -34,14 +34,19 @@ def parse_github_url(repo_url: str) -> str:
         return None
     if url.endswith(".git"):
         url = url[:-4]
+    
+    # Extract path portion
     if "git@github.com:" in url:
-        return url.split("git@github.com:")[-1]
-    if "github.com/" in url:
-        parts = url.split("github.com/")
-        if len(parts) >= 2:
-            return parts[1].strip("/")
-    if len(url.split("/")) == 2:
-        return url
+        path = url.split("git@github.com:")[-1]
+    elif "github.com/" in url:
+        path = url.split("github.com/")[-1]
+    else:
+        path = url
+        
+    path = path.strip("/")
+    parts = path.split("/")
+    if len(parts) >= 2:
+        return f"{parts[0]}/{parts[1]}"
     return None
 
 def check_repo_private(repo_url: str) -> bool:
@@ -61,8 +66,20 @@ def check_repo_private(repo_url: str) -> bool:
                 return True
             return False
     except urllib.error.HTTPError as e:
-        if e.code in [404, 403, 401]:
-            # Private repos return 404/403/401 to unauthenticated requests
+        if e.code == 403:
+            # Check for API rate limiting
+            rate_remaining = e.headers.get("X-RateLimit-Remaining")
+            if rate_remaining == "0":
+                return False  # Rate limited, assume public to allow ZIP download attempt
+            try:
+                body = e.read().decode("utf-8", errors="ignore")
+                if "rate limit" in body.lower():
+                    return False
+            except Exception:
+                pass
+            return True
+        elif e.code in [404, 401]:
+            # Private or non-existent
             return True
         return False
     except Exception:
@@ -283,7 +300,7 @@ def clone_and_index(repo_url: str, branch: str):
 def render_ingestion_tabs():
     tab_upload, tab_github, tab_paste = st.tabs([
         '📄  Upload File',
-        '🐙  Clone GitHub Repo',
+        '🐙  GitHub Repo',
         '✍️  Paste Text',
     ])
  
@@ -303,7 +320,7 @@ def render_ingestion_tabs():
         branch = st.text_input('Branch', value='main')
         col_clone, col_info = st.columns([2,1])
         with col_clone:
-            if st.button('⬇  Clone & Index', use_container_width=True):
+            if st.button('⬇  Analyze Repository', use_container_width=True):
                 if repo_url:
                     clone_and_index(repo_url, branch)
                 else:

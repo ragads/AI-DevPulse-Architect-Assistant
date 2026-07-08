@@ -1,4 +1,4 @@
-# Walkthrough: AI Software Engineer Assistant
+# Walkthrough: DevPulse Architect
 
 This project implements a multi-agent system designed to act as an automated code reviewer, tester, and technical writer. It runs on a local **SQLite** database (`assistant.db`) to search codebases and documentation, using an agentic pipeline to solve complex developer queries.
 

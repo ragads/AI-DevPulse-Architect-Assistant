@@ -1,4 +1,4 @@
-# AI Software Engineer Assistant 🧠🤖
+# DevPulse Architect 🧠🤖
 
 A high-fidelity, unified developer workspace designed for codebase exploration, repository indexing, and interactive codebase Q&A. The project combines a space-blue glassmorphic Streamlit dashboard with a state-of-the-art Multi-Agent Swarm Orchestrator and local vector similarity search.
 
