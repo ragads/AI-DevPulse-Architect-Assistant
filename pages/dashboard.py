@@ -12,6 +12,7 @@ import queue
 import threading
 import time
 import sys
+import shlex
 import google.genai as genai
 from google.genai import types
 from theme import inject_theme
@@ -459,8 +460,37 @@ def render_live_runner():
         return
         
     selected_file = st.selectbox("Select File to Run", exec_files)
-    args = st.text_input("Arguments (optional)", placeholder="e.g. --verbose --port 8080")
     
+    # Auto-generate default command based on selection
+    default_cmd = ""
+    if selected_file:
+        ext = selected_file.split(".")[-1].lower()
+        if ext == "py":
+            # Check if file imports streamlit
+            file_abs = os.path.join(cloned_dir, selected_file)
+            is_streamlit = False
+            try:
+                with open(file_abs, "r", encoding="utf-8", errors="ignore") as f:
+                    content = f.read()
+                    if "import streamlit" in content or "from streamlit" in content:
+                        is_streamlit = True
+            except Exception:
+                pass
+                
+            if is_streamlit:
+                default_cmd = f"python -m streamlit run {selected_file} --server.port 8501"
+            else:
+                default_cmd = f"python -u {selected_file}"
+        elif ext == "js":
+            default_cmd = f"node {selected_file}"
+        else:
+            default_cmd = f"./{selected_file}" if os.name != "nt" else selected_file
+
+    run_cmd_input = st.text_input("Command to Execute", value=default_cmd)
+    
+    if "streamlit" in run_cmd_input.lower():
+        st.info("💡 **Streamlit Application Detected:** Running this command will start a Streamlit server in the background. If you are running locally, you can open the app in your browser (usually at http://localhost:8501). If running on Render, the server port is isolated but you will see the logs below.")
+        
     has_reqs = os.path.exists(os.path.join(cloned_dir, "requirements.txt"))
     
     col_actions = st.columns([1, 1, 2])
@@ -477,20 +507,14 @@ def render_live_runner():
             install_btn = False
             
     if run_btn:
-        ext = selected_file.split(".")[-1].lower()
-        if ext == "py":
-            cmd = [sys.executable, selected_file]
-        elif ext == "js":
-            cmd = ["node", selected_file]
-        else:
-            if os.name != 'nt' and not selected_file.startswith(("./", "/")):
-                cmd = ["./" + selected_file]
-            else:
-                cmd = [selected_file]
-            
-        if args.strip():
-            cmd.extend(args.strip().split())
-            
+        cmd = shlex.split(run_cmd_input.strip())
+        if cmd:
+            # Map python/streamlit to environment executable
+            if cmd[0] in ["python", "python3", "python.exe"]:
+                cmd[0] = sys.executable
+            elif cmd[0] == "streamlit":
+                cmd = [sys.executable, "-m", "streamlit"] + cmd[1:]
+                
         try:
             process = subprocess.Popen(
                 cmd,
@@ -507,7 +531,7 @@ def render_live_runner():
             
             st.session_state["running_process"] = process
             st.session_state["process_queue"] = q
-            st.session_state["console_logs"] = [f"$ {' '.join(cmd)}\n"]
+            st.session_state["console_logs"] = [f"$ {run_cmd_input.strip()}\n"]
             st.rerun()
         except Exception as e:
             st.error(f"Failed to start process: {e}")
