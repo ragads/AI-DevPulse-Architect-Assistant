@@ -7,6 +7,11 @@ import io
 import json
 import logging
 import os
+import subprocess
+import queue
+import threading
+import time
+import sys
 import google.genai as genai
 from google.genai import types
 from theme import inject_theme
@@ -42,6 +47,42 @@ def parse_github_url(repo_url: str) -> str:
     if len(parts) >= 2:
         return f"{parts[0]}/{parts[1]}"
     return None
+
+def read_output_stream(process, q):
+    try:
+        for line in iter(process.stdout.readline, ''):
+            q.put(line)
+    except Exception:
+        pass
+    finally:
+        try:
+            process.stdout.close()
+        except Exception:
+            pass
+
+def extract_indexed_files_to_disk(repo_url: str, files: list) -> str:
+    repo_path = parse_github_url(repo_url)
+    if not repo_path:
+        return None
+    safe_dir_name = repo_path.replace("/", "_")
+    target_dir = os.path.join("cloned_runs", safe_dir_name)
+    os.makedirs(target_dir, exist_ok=True)
+    
+    for f in files:
+        path = f["path"]
+        content = f["content"]
+        out_path = os.path.join(target_dir, path)
+        os.makedirs(os.path.dirname(out_path), exist_ok=True)
+        
+        # Write content (either as bytes or text string)
+        if isinstance(content, str):
+            with open(out_path, "w", encoding="utf-8", errors="ignore") as file_out:
+                file_out.write(content)
+        else:
+            with open(out_path, "wb") as file_out:
+                file_out.write(content)
+                
+    return target_dir
 
 def check_repo_private(repo_url: str) -> bool:
     repo_path = parse_github_url(repo_url)
@@ -262,6 +303,12 @@ def clone_and_index(repo_url: str, branch: str):
             status.markdown(f'`Indexing {f["path"]}...`')
             insert_file_with_chunks(f)
             progress.progress((i + 1) / len(files))
+        # Extract files to disk for Live Runner execution
+        try:
+            extract_indexed_files_to_disk(repo_url, files)
+        except Exception as e:
+            logger.error(f"Failed to extract files to disk: {e}")
+            
         progress.empty()
         status.success(f'✓  Indexed {len(files)} files from {repo_url}')
         
@@ -368,6 +415,155 @@ def render_files_table():
                     del st.session_state['last_repo_name']
             st.rerun()
 
+def render_live_runner():
+    st.markdown("### ⚡ Live Runner")
+    st.write("Execute runnable files (.py, .js, .bat, .sh) from the analyzed repository locally.")
+    
+    last_repo = st.session_state.get('last_repo_name')
+    if not last_repo:
+        st.info("No repository has been analyzed yet. Please ingest a repository first.")
+        return
+        
+    repo_path = parse_github_url(last_repo)
+    if not repo_path:
+        st.error("Invalid repository URL stored.")
+        return
+        
+    safe_dir_name = repo_path.replace("/", "_")
+    cloned_dir = os.path.join("cloned_runs", safe_dir_name)
+    
+    if not os.path.exists(cloned_dir):
+        st.info("Local repository files do not exist on disk. Please re-analyze the repository to extract files.")
+        return
+        
+    # Scan for executable files
+    exec_files = []
+    for root, dirs, files in os.walk(cloned_dir):
+        for f in files:
+            ext = f.split(".")[-1].lower() if "." in f else ""
+            if ext in ["py", "js", "bat", "sh"]:
+                rel_path = os.path.relpath(os.path.join(root, f), cloned_dir)
+                exec_files.append(rel_path)
+                
+    if not exec_files:
+        st.warning("No runnable files (.py, .js, .bat, .sh) found in the repository.")
+        return
+        
+    selected_file = st.selectbox("Select File to Run", exec_files)
+    args = st.text_input("Arguments (optional)", placeholder="e.g. --verbose --port 8080")
+    
+    has_reqs = os.path.exists(os.path.join(cloned_dir, "requirements.txt"))
+    
+    col_actions = st.columns([1, 1, 2])
+    running_process = st.session_state.get("running_process")
+    
+    with col_actions[0]:
+        run_btn = st.button("⚡ Run Code", disabled=(running_process is not None), use_container_width=True)
+    with col_actions[1]:
+        terminate_btn = st.button("🛑 Terminate", disabled=(running_process is None), use_container_width=True)
+    with col_actions[2]:
+        if has_reqs:
+            install_btn = st.button("📦 Install Dependencies (pip)", disabled=(running_process is not None), use_container_width=True)
+        else:
+            install_btn = False
+            
+    if run_btn:
+        file_path = os.path.join(cloned_dir, selected_file)
+        ext = selected_file.split(".")[-1].lower()
+        if ext == "py":
+            cmd = [sys.executable, file_path]
+        elif ext == "js":
+            cmd = ["node", file_path]
+        else:
+            cmd = [file_path]
+            
+        if args.strip():
+            cmd.extend(args.strip().split())
+            
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                cwd=cloned_dir
+            )
+            q = queue.Queue()
+            t = threading.Thread(target=read_output_stream, args=(process, q))
+            t.daemon = True
+            t.start()
+            
+            st.session_state["running_process"] = process
+            st.session_state["process_queue"] = q
+            st.session_state["console_logs"] = [f"$ {' '.join(cmd)}\n"]
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to start process: {e}")
+            
+    if install_btn:
+        cmd = [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"]
+        try:
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                cwd=cloned_dir
+            )
+            q = queue.Queue()
+            t = threading.Thread(target=read_output_stream, args=(process, q))
+            t.daemon = True
+            t.start()
+            
+            st.session_state["running_process"] = process
+            st.session_state["process_queue"] = q
+            st.session_state["console_logs"] = [f"$ {' '.join(cmd)}\n"]
+            st.rerun()
+        except Exception as e:
+            st.error(f"Failed to start dependency installation: {e}")
+            
+    if terminate_btn and running_process:
+        running_process.terminate()
+        st.session_state["running_process"] = None
+        st.session_state["process_queue"] = None
+        st.success("Process terminated by user.")
+        st.rerun()
+        
+    q = st.session_state.get("process_queue")
+    logs = st.session_state.get("console_logs", [])
+    
+    if logs:
+        st.markdown("**Console Output:**")
+        log_placeholder = st.empty()
+        
+        if q:
+            while not q.empty():
+                try:
+                    line = q.get_nowait()
+                    logs.append(line)
+                except queue.Empty:
+                    break
+                    
+        log_text = "".join(logs)
+        log_placeholder.code(log_text, language="bash")
+        
+        if running_process:
+            if running_process.poll() is None:
+                time.sleep(0.1)
+                st.rerun()
+            else:
+                if q:
+                    while not q.empty():
+                        try:
+                            line = q.get_nowait()
+                            logs.append(line)
+                        except queue.Empty:
+                            break
+                    log_placeholder.code("".join(logs), language="bash")
+                st.session_state["running_process"] = None
+                st.session_state["process_queue"] = None
+                st.info(f"Process exited with code {running_process.returncode}")
+
 def render():
     inject_theme()
     st.markdown("### Dashboard")
@@ -375,9 +571,10 @@ def render():
     # Auto-load state if DB already has files
     ensure_readme_or_explanation()
     
-    tab_ingest, tab_readme, tab_files = st.tabs([
+    tab_ingest, tab_readme, tab_run, tab_files = st.tabs([
         '📥  Repository Ingestion',
         '📖  README & Explanation',
+        '⚡  Live Runner',
         '🗄️  Indexed Files'
     ])
     
@@ -403,5 +600,8 @@ def render():
         else:
             st.info("No repository has been analyzed yet. Ingest a repository to view its overview.")
             
+    with tab_run:
+        render_live_runner()
+        
     with tab_files:
         render_files_table()
