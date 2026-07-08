@@ -418,7 +418,16 @@ def render_files_table():
 def render_live_runner():
     st.markdown("### ⚡ Live Runner")
     st.write("Execute runnable files (.py, .js, .bat, .sh) from the analyzed repository locally.")
-    
+    last_exit = st.session_state.get("last_exit_code")
+    if last_exit is not None:
+        if last_exit == 0:
+            st.success("✓ Process finished successfully (exit code 0)")
+        elif last_exit == -1:
+            st.warning("⚠️ Process terminated by user")
+        else:
+            st.error(f"✗ Process failed (exit code {last_exit})")
+        st.session_state["last_exit_code"] = None
+        
     last_repo = st.session_state.get('last_repo_name')
     if not last_repo:
         st.info("No repository has been analyzed yet. Please ingest a repository first.")
@@ -486,6 +495,7 @@ def render_live_runner():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                errors="replace",
                 cwd=cloned_dir
             )
             q = queue.Queue()
@@ -508,6 +518,7 @@ def render_live_runner():
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,
+                errors="replace",
                 cwd=cloned_dir
             )
             q = queue.Queue()
@@ -526,6 +537,7 @@ def render_live_runner():
         running_process.terminate()
         st.session_state["running_process"] = None
         st.session_state["process_queue"] = None
+        st.session_state["last_exit_code"] = -1
         st.success("Process terminated by user.")
         st.rerun()
         
@@ -560,9 +572,11 @@ def render_live_runner():
                         except queue.Empty:
                             break
                     log_placeholder.code("".join(logs), language="bash")
+                exit_code = running_process.returncode
                 st.session_state["running_process"] = None
                 st.session_state["process_queue"] = None
-                st.info(f"Process exited with code {running_process.returncode}")
+                st.session_state["last_exit_code"] = exit_code
+                st.rerun()
 
 def render():
     inject_theme()
