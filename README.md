@@ -25,7 +25,18 @@ A high-fidelity, unified developer workspace designed for codebase exploration, 
    * A full chat-based workspace allows you to ask questions about the indexed codebase.
    * Shows step-by-step agent execution progress and retrieves specific code chunks to formulate accurate answers.
 
-5. **Local Vector Database**:
+5. **⚡ Live Runner (Code Execution Engine)**:
+   * Execute python files, Javascript nodes, bash scripts, and batch files (`.py`, `.js`, `.sh`, `.bat`) from the cloned repository.
+   * View real-time streaming output logs in a custom console display.
+   * Smart Entrypoint Selector: Automatically detects candidate run files, prioritizing files that import Streamlit (`import streamlit`) to find web applications easily.
+   * Automated Setup: Auto-detects dependencies and installs them using `pip install -r requirements.txt` prior to execution.
+
+6. **🟢 Real-time Live Interactive Viewport**:
+   * Uses Cloudflare Quick Tunnels (`trycloudflare.com`) to expose running web apps securely and automatically.
+   * Auto-bootstraps: Downloads the portable standalone `cloudflared` binary for the detected platform (Windows, Linux, macOS) at runtime.
+   * Embedded Viewport: Renders a live scrollable web preview (iframe) directly inside the DevPulse Architect dashboard, enabling developers to interact, type, and click in real-time.
+
+7. **Local Vector Database**:
    * Stores document chunks, query logs, and embeddings locally in an SQLite database (`assistant.db`).
    * Serializes embeddings as JSON float arrays and computes in-memory cosine similarity searches.
    * Uses the `google-genai` SDK and the `text-embedding-004` model for high-accuracy embedding vectors.
