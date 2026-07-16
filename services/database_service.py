@@ -63,6 +63,9 @@ def save_audit(repo_name: str, summary: str, findings: str, score: int,
     return sqlite_service.save_audit(repo_name, summary, findings, score,
                                      grade, files_scanned, files_skipped)
 
+def keyword_search_chunks(query: str, limit: int = 6) -> List[Dict[str, Any]]:
+    return sqlite_service.keyword_search_chunks(query, limit)
+
 def get_latest_audit():
     return sqlite_service.get_latest_audit()
 

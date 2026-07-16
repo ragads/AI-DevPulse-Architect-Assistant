@@ -116,3 +116,8 @@ try:
 except Exception as exc:  # noqa: BLE001 - top-level UI boundary
     st.error(f"Failed to render **{choice}**: {exc}")
     st.exception(exc)
+
+# Floating chat launcher + panel, present on every page.
+from components.chat_widget import render_chat_widget  # noqa: E402
+
+render_chat_widget()

@@ -525,6 +525,63 @@ table { border-color: var(--border) !important; }
 thead th { color: var(--text-muted) !important; border-color: var(--border) !important; }
 tbody td { color: var(--text-primary) !important; border-color: var(--border) !important; }
 
+/* ── Floating chat widget ─────────────────────────────── */
+/* Streamlit tags keyed containers with a .st-key-<key> class; we pin those. */
+.st-key-dp_chat_launcher {
+    position: fixed !important;
+    right: 24px !important; bottom: 24px !important;
+    width: 56px !important; z-index: 1000001 !important;
+}
+.st-key-dp_chat_launcher button {
+    width: 56px !important; height: 56px !important; min-height: 56px !important;
+    border-radius: 50% !important;
+    background-color: var(--accent) !important; border: none !important;
+    box-shadow: 0 6px 20px rgba(79,70,229,.45) !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' fill='none'%3E%3Cpath d='M5 16 H10 L13 9 L17 23 L20 13 L22 16 H27' stroke='white' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: center !important;
+    background-size: 30px 30px !important;
+    transition: transform .12s ease, box-shadow .12s ease !important;
+}
+/* Hide the button's text label so only the logo shows. */
+.st-key-dp_chat_launcher button * {
+    font-size: 0 !important; color: transparent !important;
+    width: 0 !important; height: 0 !important; overflow: hidden !important;
+}
+.st-key-dp_chat_launcher button:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 10px 26px rgba(79,70,229,.55) !important;
+    background-color: var(--accent-hover) !important;
+}
+
+.st-key-dp_chat_panel {
+    position: fixed !important;
+    right: 24px !important; bottom: 92px !important;
+    width: 370px !important; max-width: calc(100vw - 32px) !important;
+    z-index: 1000001 !important;
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    box-shadow: var(--shadow-lg) !important;
+    padding: 14px 16px !important;
+}
+.st-key-dp_chat_scroll {
+    height: 300px !important; overflow-y: auto !important;
+    margin: 6px -4px 8px; padding: 0 4px;
+}
+.st-key-dp_chat_close button {
+    background: transparent !important; border: none !important;
+    color: var(--text-muted) !important; padding: 0 !important;
+    min-height: 28px !important;
+}
+.st-key-dp_chat_close button:hover { color: var(--text-primary) !important; }
+.st-key-dp_chat_panel [data-testid="stChatInput"] {
+    background: var(--surface-2) !important; border-color: var(--border) !important;
+}
+.st-key-dp_chat_panel [data-testid="stChatInput"] textarea {
+    background: transparent !important; color: var(--text-primary) !important;
+}
+
 /* ── Images (guide screenshots) ───────────────────────── */
 div[data-testid="stImage"] img {
     border: 1px solid var(--border) !important;

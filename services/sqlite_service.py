@@ -1,5 +1,6 @@
 # services/sqlite_service.py
 import os
+import re
 import json
 import sqlite3
 import logging
@@ -387,6 +388,42 @@ def semantic_search(embedding: List[float], top_k: int = 8, file_type: Optional[
     except Exception as e:
         logger.error(f"SQLite semantic search failed: {e}")
         return []
+
+def keyword_search_chunks(query: str, limit: int = 6) -> List[Dict[str, Any]]:
+    """Term-overlap fallback used when embeddings are unavailable (no Gemini key).
+
+    Returns the same shape as the vector search: {content, filename, file_type, score}.
+    """
+    terms = list(dict.fromkeys(re.findall(r"[A-Za-z_][A-Za-z0-9_]{2,}", query.lower())))[:10]
+    if not terms:
+        return []
+    try:
+        conn = sqlite3.connect(SQLITE_DB_PATH)
+        cursor = conn.cursor()
+        where = " OR ".join("LOWER(c.content) LIKE ?" for _ in terms)
+        params = [f"%{t}%" for t in terms]
+        cursor.execute(f"""
+            SELECT c.content, f.filename, f.file_type
+            FROM assistant_file_chunks c
+            JOIN assistant_files f ON f.id = c.file_id
+            WHERE {where}
+            LIMIT 400
+        """, params)
+        rows = cursor.fetchall()
+        conn.close()
+
+        scored = []
+        for content, filename, file_type in rows:
+            low = (content or "").lower()
+            score = sum(1 for t in terms if t in low)
+            scored.append({"content": content, "filename": filename,
+                           "file_type": file_type, "score": score})
+        scored.sort(key=lambda r: r["score"], reverse=True)
+        return scored[:limit]
+    except Exception as e:
+        logger.error(f"SQLite keyword chunk search failed: {e}")
+        return []
+
 
 def get_file_content(file_id: int) -> Dict[str, Any]:
     try:
